@@ -3,43 +3,56 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Upload File ke Google Drive</title>
+    <title>File Upload to Google Drive</title>
 </head>
 <body>
-    <h1>Upload File ke Google Drive</h1>
+    <h1>Upload File to Google Drive</h1>
+    
     <form id="uploadForm">
-        <label for="fileName">Nama File:</label><br>
-        <input type="text" id="fileName" placeholder="Nama File" required /><br><br>
-
-        <label for="fileContent">Isi File:</label><br>
-        <textarea id="fileContent" placeholder="Isi File" required></textarea><br><br>
-
+        <input type="file" id="fileInput" name="file" />
         <button type="submit">Upload</button>
     </form>
 
+    <p id="status"></p>
+
     <script>
-        document.getElementById('uploadForm').addEventListener('submit', async function (event) {
+        document.getElementById('uploadForm').addEventListener('submit', function(event) {
             event.preventDefault();
-
-            const fileName = document.getElementById('fileName').value;
-            const fileContent = document.getElementById('fileContent').value;
-
-            // Arahkan form untuk mengirim data ke serverless function Vercel
-            const response = await fetch('https://testsrever.vercel.app/api/upload', { // Ganti dengan URL API Vercel kamu
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ fileName, fileContent }),
-            });
-
-            const result = await response.json();
-
-            if (result.success) {
-                alert('File berhasil diunggah! ID File: ' + result.fileId);
-            } else {
-                alert('Error mengunggah file: ' + result.error);
+            
+            const fileInput = document.getElementById('fileInput').files[0];
+            if (!fileInput) {
+                alert("Pilih file terlebih dahulu.");
+                return;
             }
+
+            const reader = new FileReader();
+            reader.onloadend = function() {
+                const fileData = reader.result.split(',')[1]; // base64 data
+                const fileName = fileInput.name;
+                const mimeType = fileInput.type;
+
+                // Buat objek FormData untuk dikirim ke Google Apps Script
+                const formData = new FormData();
+                formData.append("fileName", fileName);
+                formData.append("mimeType", mimeType);
+                formData.append("binaryData", fileData);
+
+                // Kirim ke Google Apps Script Web App
+                fetch("https://script.google.com/macros/s/AKfycbzzwJD-nxvO7iqNAHGS1lsU3Eesd6_o0MwIHG2CBDePvkrWbSPKZh_DcX16Kn3F00cl/exec", {
+                    method: "POST",
+                    body: formData
+                })
+                .then(response => response.text())
+                .then(data => {
+                    document.getElementById('status').innerText = data;
+                })
+                .catch(error => {
+                    console.error("Error:", error);
+                    document.getElementById('status').innerText = "Upload failed!";
+                });
+            };
+
+            reader.readAsDataURL(fileInput); // Membaca file sebagai data URL (base64)
         });
     </script>
 </body>
